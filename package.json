@@ -1,0 +1,11 @@
+{
+  "name": "couchbase-event-driver",
+  "version": "0.0.1-pre0",
+  "description": "A Couchbase Driver using libcouchbase that supports Eventing.",
+  "main": "couchbase-event-driver.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Frank Lemanschik <frank@dspeed.eu>",
+  "license": "Apache-2.0"
+}
