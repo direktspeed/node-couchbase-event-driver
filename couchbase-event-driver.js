@@ -2,8 +2,8 @@
  * Couchbase Event Driver
  */
 const EventEmitter = require('events');
-const couchbase = require('couchbase');
 
+const debug = require('debug');
 //TODO: patch n1ql update querys
 /**
  *  you can supply a alternativ eventEngine via
@@ -11,42 +11,52 @@ const couchbase = require('couchbase');
  *  defaults to eventEmitter
  */
 class Couchbase {
-    constructor() {
-        Object.assign(this, couchbase)
-        this.Cluster = class Cluster extends couchbase.Cluster {
-            constructor(...args) {
-                super(...args)
-                this.openBucket = (name,...args) => {
-                    const bucket = super.openBucket(name,...args);
-                   
-                    bucket.eventEmitter = new EventEmitter();
-                    bucket.emit = (...args)=>bucket.eventEmitter.emit(...args)
-                    bucket.on = (...args)=>bucket.eventEmitter.on(...args)
+  constructor(driver) {
 
-                    function patchCallback(action,id,doc,callback){
-                        return function emitingCallback(err,result) {
-                            if (!err) {
-                                bucket.emit(action, { bucket: name, id, doc ,result })
-                            }
-                            callback(err,result)
-                        }
-                    }
+    Object.assign(this, driver);
+    this.Cluster = class Cluster extends driver.Cluster {
+      constructor(...args) {
+        super(...args);
+        debug('constructor Cluster')();
+        this.openBucket = (name,...args) => {
+          const bucket = super.openBucket(name,...args);
+          debug('patched: openBucket')(...args);
+          bucket.eventEmitter = new EventEmitter();
+          bucket.emit = (...args)=>bucket.eventEmitter.emit(...args);
+          bucket.on = (...args)=>bucket.eventEmitter.on(...args);
+          /*
+          function patchCallback(action,id,doc,callback){
+            debug('patchCallback')(action,id,doc,callback);
+            return function emitingCallback(err, result) {              
+              if (!err) {
+                debug('emittingCallback')(action);
+                bucket.emit(action, { bucket: name, id, doc, result });
+              }
+              debug('callback')(id,callback);
+              callback(err,result);
+            };
+          }
 
-                    function patchMethod(method) {
-                        bucket[`_${method}`] = bucket[method];    
-                        bucket[method] = (id,doc,...rest) => {
-                            rest.push(patchCallback(method,id, doc, rest.pop()))
-                            return bucket[`_${method}`](id,doc,...rest)
-                        }
-                    }
+          function patchMethod(method) {
+            bucket[`_${method}`] = Object.assign(bucket[method]);    
+            
+            bucket[method] = (id, doc, ...rest) => {
+              
+              rest.push(patchCallback(method, id, doc, rest.pop()));
+              debug(`patched: ${method}`)(id,doc,...rest);
+              bucket[`_${method}`](id,doc,...rest);
+            };
+            debug('patchMethod')(method);
+          }
                     
-                    ['insert','upsert','replace'].map(patchMethod)
-                    
-                    return bucket
-                }
-            }
-        }
-    }
+          ['insert','upsert','replace'].map(patchMethod);
+          */
+          //TODO: Patch Update remove          
+          return bucket;
+        };
+      }
+    };
+  }
 }
 
-module.exports = cluster;
+module.exports = Couchbase;
